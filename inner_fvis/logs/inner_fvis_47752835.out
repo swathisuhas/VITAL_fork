@@ -1,0 +1,9 @@
+Namespace(target_layer='layer4', arch='resnet50', batch_size=512, topk_images=10000, split_N=None)
+==> Loading ImageNet dataset - split train
+==> ImageNet directory: /BS/Databases23/imagenet/original
+==> transform: Compose(
+    Resize(size=256, interpolation=bilinear, max_size=None, antialias=True)
+    CenterCrop(size=(224, 224))
+    ToTensor()
+    Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+)

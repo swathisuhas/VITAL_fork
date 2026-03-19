@@ -7,7 +7,7 @@ import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 
 # Set the appropriate paths of the datasets here.
-_IMAGENET_DATASET_DIR = " " # Imagenet directory
+_IMAGENET_DATASET_DIR = "/BS/Databases23/imagenet/original" # Imagenet directory
 
 _MEAN_PIXEL = [0.485, 0.456, 0.406]
 _STD_PIXEL = [0.229, 0.224, 0.225]

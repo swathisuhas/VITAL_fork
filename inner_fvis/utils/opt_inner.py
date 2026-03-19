@@ -18,6 +18,7 @@ from torchvision.models.feature_extraction import create_feature_extractor
 from utils.lrp import LRPModel, LRPModelRestricted
 import copy
 from utils.guided_backprop import LayerGuidedBackprop
+import torch.nn.functional as F
 
 def split_network(model, req_name):
     """
@@ -213,6 +214,129 @@ def save_maco(image, alpha, percentile_image=1.0, percentile_alpha=95, filename=
     pil_image = Image.fromarray((image_np * 255).astype(np.uint8))
     pil_image.save(filename) 
 
+# ----------------------------
+# Graph helpers 
+# ----------------------------
+
+def _grid_positions(h, w, device):
+    ys = torch.linspace(-1, 1, steps=h, device=device)
+    xs = torch.linspace(-1, 1, steps=w, device=device)
+    yy, xx = torch.meshgrid(ys, xs, indexing='ij')
+    return torch.stack([xx, yy], dim=-1).view(-1, 2)  # (H*W, 2)
+
+def _flatten_feats_positions(feat_map):
+    # feat_map: [B, C, H, W]
+    B, C, H, W = feat_map.shape
+    feats = feat_map.permute(0, 2, 3, 1).reshape(B, H * W, C)
+    pos = _grid_positions(H, W, feat_map.device).unsqueeze(0).repeat(B, 1, 1)
+    return feats, pos, (H, W)
+
+def _build_graph_from_featmap_importance(feat_map, K_parts=8):
+    feats_flat, pos_flat, _ = _flatten_feats_positions(feat_map)
+    feats_flat = feats_flat[0]   # [N, C]
+    pos_flat = pos_flat[0]       # [N, 2]
+
+    f = feats_flat
+    f_std = (f - f.mean(0, keepdim=True)) / (f.std(0, keepdim=True) + 1e-6)
+
+    N, C = f_std.shape
+    K_eff = min(K_parts, N)
+
+    # importance sampling from feature magnitude
+    mags = f.norm(p=2, dim=1)
+    _, top_indices = torch.topk(mags, k=K_eff)
+
+    nodes_f = f_std[top_indices]
+    nodes_p = pos_flat[top_indices]
+
+    diffs = nodes_p.unsqueeze(1) - nodes_p.unsqueeze(0)   # [K,K,2]
+    D = torch.linalg.norm(diffs + 1e-8, dim=-1)
+    med = torch.median(D[D > 0]) if (D > 0).any() else D.new_tensor(1.0)
+    Dnorm = D / (med + 1e-6)
+    Ang = torch.atan2(diffs[..., 1], diffs[..., 0])
+
+    return {
+        "nodes_f": nodes_f,
+        "nodes_p": nodes_p,
+        "Dnorm": Dnorm,
+        "Ang": Ang,
+    }
+
+def _sinkhorn(C, eps=0.05, iters=50, a=None, b=None):
+    K = torch.exp(-C / max(eps, 1e-6)) + 1e-9
+    n, m = K.shape
+    if a is None:
+        a = torch.full((n,), 1.0 / n, device=K.device)
+    if b is None:
+        b = torch.full((m,), 1.0 / m, device=K.device)
+
+    u = torch.ones_like(a)
+    v = torch.ones_like(b)
+
+    for _ in range(iters):
+        u = a / (K @ v + 1e-8)
+        v = b / (K.t() @ u + 1e-8)
+
+    return torch.diag(u) @ K @ torch.diag(v)
+
+def graph_matching_loss(
+    syn_graph,
+    ref_graph,
+    alpha_feat=1.0,
+    beta_pos=0.0,
+    lam_dist=1.0,
+    lam_ang=0.1,
+    lambda_nodes=1.0,
+    sink_eps=0.005,
+    sink_iters=200,
+    use_nodes=True,
+    use_edges=True,
+    use_angles=False,
+):
+    f_s, p_s, D_s, A_s = syn_graph["nodes_f"], syn_graph["nodes_p"], syn_graph["Dnorm"], syn_graph["Ang"]
+    f_r, p_r, D_r, A_r = ref_graph["nodes_f"], ref_graph["nodes_p"], ref_graph["Dnorm"], ref_graph["Ang"]
+
+    f_s_n = F.normalize(f_s, dim=-1)
+    f_r_n = F.normalize(f_r, dim=-1)
+
+    C_feat = 1.0 - (f_s_n @ f_r_n.t())
+    C_pos = torch.cdist(p_s, p_r, p=2)
+
+    sf = C_feat.median()
+    sp = C_pos.median()
+    C = alpha_feat * (C_feat / (sf + 1e-6)) + beta_pos * (C_pos / (sp + 1e-6))
+
+    Pi = _sinkhorn(C, eps=sink_eps, iters=sink_iters)
+    mass = Pi.sum() + 1e-8
+
+    L_nodes = (Pi * C_feat).sum() / mass if use_nodes else (Pi * 0.0).sum()
+
+    if use_edges:
+        Ds = D_s.unsqueeze(1).unsqueeze(3)
+        Dr = D_r.unsqueeze(0).unsqueeze(2)
+        diff2 = (Ds - Dr) ** 2
+        Pij = Pi.unsqueeze(2).unsqueeze(3)
+        Pkl = Pi.unsqueeze(0).unsqueeze(1)
+        L_edges_dist = (diff2 * Pij * Pkl).sum() / (mass ** 2)
+    else:
+        L_edges_dist = (Pi * 0.0).sum()
+
+    if use_angles:
+        As = A_s.unsqueeze(1).unsqueeze(3)
+        Ar = A_r.unsqueeze(0).unsqueeze(2)
+        ang_cost = 1.0 - torch.cos(As - Ar)
+        Pij = Pi.unsqueeze(2).unsqueeze(3)
+        Pkl = Pi.unsqueeze(0).unsqueeze(1)
+        L_ang = (ang_cost * Pij * Pkl).sum() / (mass ** 2)
+    else:
+        L_ang = (Pi * 0.0).sum()
+
+    return lambda_nodes * L_nodes + lam_dist * L_edges_dist + lam_ang * L_ang
+
+
+def softmin_over_refs(losses, tau=0.5):
+    return -tau * torch.logsumexp(-losses / max(tau, 1e-6), dim=0)
+
 class DeepFeaturesClass(object):
     def __init__(self,
                  model=None,
@@ -244,6 +368,13 @@ class DeepFeaturesClass(object):
         self.lr = coefficients["lr"]
         self.feat_dist = coefficients["feat_dist"]
         self.layer_weights = coefficients["layer_weights"]
+
+        self.graph_scale = coefficients.get("graph_scale", 1.0)
+        self.graph_K = coefficients.get("graph_K", 16)
+        self.graph_num_refs = coefficients.get("graph_num_refs", 8)
+        self.graph_sink_eps = coefficients.get("graph_sink_eps", 0.005)
+        self.graph_sink_iters = coefficients.get("graph_sink_iters", 30)
+        self.graph_tau = coefficients.get("graph_tau", 0.5)
 
         self.num_generations = 0
 
@@ -490,7 +621,7 @@ class DeepFeaturesClass(object):
         self.save_images(best_inputs)
 
         if self.exp_name is None:
-            name = f"c1_{self.layer_weights[0]}_l1_{self.layer_weights[1]}_l2_{self.layer_weights[2]}_l3_{self.layer_weights[3]}_l4_{self.layer_weights[4]}_masked.png"
+            name = f"ch_{self.channel}_c1_{self.layer_weights[0]}_l1_{self.layer_weights[1]}_l2_{self.layer_weights[2]}_l3_{self.layer_weights[3]}_l4_{self.layer_weights[4]}_masked.png"
             place_to_store = os.path.join(self.folder_name, name)
         else:
             place_to_store = os.path.join(self.folder_name, self.exp_name + "_masked.png")
@@ -513,7 +644,7 @@ class DeepFeaturesClass(object):
         for id in range(images.shape[0]):
 
             if self.exp_name is None:
-                name = f"c1_{self.layer_weights[0]}_l1_{self.layer_weights[1]}_l2_{self.layer_weights[2]}_l3_{self.layer_weights[3]}_l4_{self.layer_weights[4]}.png"
+                name = f"ch_{self.channel}_c1_{self.layer_weights[0]}_l1_{self.layer_weights[1]}_l2_{self.layer_weights[2]}_l3_{self.layer_weights[3]}_l4_{self.layer_weights[4]}.png"
                 place_to_store = os.path.join(self.folder_name, name)
             else:
                 place_to_store = os.path.join(self.folder_name, self.exp_name + ".png")
