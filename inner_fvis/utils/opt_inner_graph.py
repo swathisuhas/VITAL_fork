@@ -323,7 +323,7 @@ class DeepFeaturesClass(object):
 
         # Graph loss is applied on layer3 embeddings, while channel target stays in layer4.
         self.enable_graph = coefficients.get("enable_graph", True)
-        self.graph_scale = coefficients.get("graph_scale", 1.0)
+        self.graph_scale = coefficients.get("graph_scale", 0.01)
         self.graph_K = coefficients.get("graph_K", 16)
         self.graph_num_refs = coefficients.get("graph_num_refs", 8)
         self.graph_sink_eps = coefficients.get("graph_sink_eps", 0.005)

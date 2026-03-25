@@ -14,7 +14,7 @@ parser.add_argument('--arch', type=str, default='resnet50')
 parser.add_argument('--patch_size', type=int, default=64)
 parser.add_argument('--topk_patches', type=int, default=50)
 parser.add_argument('--save_dir', type=str, default='/BS/feature_viz/work/code/VITAL_fork/inner_fvis/resnet50/neuron_layer4')
-parser.add_argument('--channel', type=int, default=712)
+parser.add_argument('--channel', type=int, default=1465)
 
 args = parser.parse_args()
 print(args)
@@ -94,7 +94,7 @@ def extract_top_patches(model, layer_name, patch_size, channel, topk_patches):
 if __name__ == '__main__':
     model = generate_model(args.arch)
 
-    for channel in range(1,2048):
+    for channel in range(3,2048):
         print(f"\nProcessing channel {channel}...")
         extract_top_patches(
             model=model,

@@ -7,10 +7,13 @@ import torch
 import torchvision.models as models
 from torchvision import transforms
 from PIL import Image
+import matplotlib.pyplot as plt
+import numpy as np
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Find top activating channels for an ImageNet class using random images."
+        description="Visualize channel activations for one ImageNet image."
     )
 
     parser.add_argument("--imagenet_root", type=str,
@@ -23,16 +26,12 @@ def parse_args():
                         help="Which ImageNet split to use.")
 
     parser.add_argument("--class_idx", type=int,
-                        default=0,
+                        default=420,
                         help="ImageNet class index in sorted folder order (0-based).")
 
-    parser.add_argument("--num_images", type=int,
-                        default=10,
-                        help="Number of random images to sample from the class.")
-
-    parser.add_argument("--topk_channels", type=int,
-                        default=5,
-                        help="How many top channels to return.")
+    parser.add_argument("--image_index", type=int,
+                        default=2,
+                        help="Pick a specific image index from the class folder. If None, sample randomly.")
 
     parser.add_argument("--arch", type=str,
                         default="resnet50",
@@ -42,9 +41,13 @@ def parse_args():
                         default="layer4",
                         help="Layer name to hook, e.g. layer4.")
 
+    parser.add_argument("--topk_channels", type=int,
+                        default=5,
+                        help="How many top channels from this image to visualize.")
+
     parser.add_argument("--seed", type=int,
                         default=0,
-                        help="Random seed for reproducible sampling.")
+                        help="Random seed.")
 
     parser.add_argument("--device", type=str,
                         default="cuda",
@@ -53,11 +56,15 @@ def parse_args():
     parser.add_argument("--use_weights_enum", action="store_true",
                         help="Use torchvision weights enum API if needed.")
 
+    parser.add_argument("--outdir", type=str,
+                        default="channel_viz",
+                        help="Output directory.")
+
     return parser.parse_args()
+
 
 def get_model(arch: str, device: str, use_weights_enum: bool = False):
     if use_weights_enum:
-        # For newer torchvision versions
         if arch == "resnet50":
             model = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
         elif arch == "resnet18":
@@ -65,7 +72,6 @@ def get_model(arch: str, device: str, use_weights_enum: bool = False):
         else:
             raise ValueError(f"Add weights enum support for arch={arch}")
     else:
-        # Works on many torchvision versions
         model = models.__dict__[arch](pretrained=True)
 
     model.eval().to(device)
@@ -114,9 +120,79 @@ def build_transform():
 
 
 def load_image(path: Path, transform, device: str):
-    img = Image.open(path).convert("RGB")
-    img = transform(img).unsqueeze(0).to(device)
+    img_pil = Image.open(path).convert("RGB")
+    x = transform(img_pil).unsqueeze(0).to(device)
+    return img_pil, x
+
+
+def tensor_to_numpy_img(x):
+    # x: [1,3,H,W] in [0,1]
+    img = x.squeeze(0).detach().cpu().permute(1, 2, 0).numpy()
+    img = np.clip(img, 0, 1)
     return img
+
+
+def normalize_map(m):
+    m = m - m.min()
+    if m.max() > 0:
+        m = m / m.max()
+    return m
+
+
+def overlay_heatmap_on_image(img_np, heatmap, alpha=0.45):
+    """
+    img_np: [H,W,3] in [0,1]
+    heatmap: [H,W] in [0,1]
+    """
+    cmap = plt.get_cmap("jet")
+    heat_rgb = cmap(heatmap)[..., :3]  # drop alpha
+    overlay = (1 - alpha) * img_np + alpha * heat_rgb
+    overlay = np.clip(overlay, 0, 1)
+    return overlay
+
+
+def save_channel_visualizations(img_np, feat, top_idx, outdir, prefix=""):
+    """
+    img_np: [H,W,3]
+    feat: [1,C,Hf,Wf]
+    top_idx: list of channel indices
+    """
+    os.makedirs(outdir, exist_ok=True)
+
+    H, W = img_np.shape[:2]
+
+    for rank, ch in enumerate(top_idx, start=1):
+        act = feat[0, ch]  # [Hf, Wf]
+        act_up = torch.nn.functional.interpolate(
+            act.unsqueeze(0).unsqueeze(0),
+            size=(H, W),
+            mode="bilinear",
+            align_corners=False
+        ).squeeze().cpu().numpy()
+
+        act_norm = normalize_map(act_up)
+        overlay = overlay_heatmap_on_image(img_np, act_norm)
+
+        fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+
+        axes[0].imshow(img_np)
+        axes[0].set_title("Input image")
+        axes[0].axis("off")
+
+        axes[1].imshow(act_norm, cmap="jet")
+        axes[1].set_title(f"Channel {ch} activation")
+        axes[1].axis("off")
+
+        axes[2].imshow(overlay)
+        axes[2].set_title(f"Overlay channel {ch}")
+        axes[2].axis("off")
+
+        plt.tight_layout()
+        save_path = os.path.join(outdir, f"{prefix}rank{rank}_channel{ch}.png")
+        plt.savefig(save_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+
+        print(f"Saved: {save_path}")
 
 
 def main():
@@ -144,50 +220,50 @@ def main():
     class_dir = class_dirs[args.class_idx]
     image_paths = list_images(class_dir)
 
-    num_images = min(args.num_images, len(image_paths))
-    sampled_paths = random.sample(image_paths, num_images)
+    if args.image_index is None:
+        img_path = random.choice(image_paths)
+    else:
+        if args.image_index < 0 or args.image_index >= len(image_paths):
+            raise ValueError(f"image_index={args.image_index} out of range for {len(image_paths)} images")
+        img_path = image_paths[args.image_index]
 
-    print(f"Using class_idx      : {args.class_idx}")
-    print(f"Class folder         : {class_dir.name}")
-    print(f"Class path           : {class_dir}")
-    print(f"Available images     : {len(image_paths)}")
-    print(f"Sampled images       : {num_images}")
-    print(f"Model                : {args.arch}")
-    print(f"Target layer         : {args.target_layer}")
-    print()
+    print(f"Class folder : {class_dir.name}")
+    print(f"Image path   : {img_path}")
+    print(f"Model        : {args.arch}")
+    print(f"Target layer : {args.target_layer}")
 
     model = get_model(args.arch, device, use_weights_enum=args.use_weights_enum)
     activations, hook_handle = register_activation_hook(model, args.target_layer)
     transform = build_transform()
 
-    all_channel_scores = []
+    img_pil, x = load_image(img_path, transform, device)
+    img_np = tensor_to_numpy_img(x)
 
     with torch.no_grad():
-        for img_path in sampled_paths:
-            x = load_image(img_path, transform, device)
-            _ = model(x)
+        _ = model(x)
 
-            if "feat" not in activations:
-                raise RuntimeError("Hook did not capture activations.")
+    if "feat" not in activations:
+        raise RuntimeError("Hook did not capture activations.")
 
-            feat = activations["feat"]  # shape [1, C, H, W]
-            scores = feat.mean(dim=(2, 3)).squeeze(0).cpu()  # shape [C]
-            all_channel_scores.append(scores)
-
+    feat = activations["feat"]  # [1,C,H,W]
     hook_handle.remove()
 
-    all_channel_scores = torch.stack(all_channel_scores, dim=0)  # [N, C]
-    mean_scores = all_channel_scores.mean(dim=0)                 # [C]
+    # mean spatial activation per channel for this single image
+    channel_scores = feat.mean(dim=(2, 3)).squeeze(0).cpu()
+    top_vals, top_idx = torch.topk(channel_scores, k=args.topk_channels)
 
-    top_vals, top_idx = torch.topk(mean_scores, k=args.topk_channels)
-
-    print("Top channels (mean activation across sampled images):")
+    print("\nTop channels for this image:")
     for rank, (ch, val) in enumerate(zip(top_idx.tolist(), top_vals.tolist()), start=1):
         print(f"{rank}. channel={ch:4d}  mean_activation={val:.6f}")
 
-    print("\nSampled image paths:")
-    for p in sampled_paths:
-        print(p)
+    prefix = f"class{args.class_idx}_{class_dir.name}_"
+    save_channel_visualizations(
+        img_np=img_np,
+        feat=feat,
+        top_idx=top_idx.tolist(),
+        outdir=args.outdir,
+        prefix=prefix
+    )
 
 
 if __name__ == "__main__":
