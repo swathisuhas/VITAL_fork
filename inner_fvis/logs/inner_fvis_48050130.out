@@ -1,0 +1,1 @@
+Namespace(target_layer='layer4', arch='resnet50', patch_size=64, patch_stride=None, topk_patches=50, save_dir='/path/to/output/resnet50_layer4_all_channels', files_txt='/path/to/files_all.txt', batch_size_images=8, max_patch_batch=4096, channels=None, num_workers=8, image_size=224, resize_size=256, use_amp=True, save_patch_tensors=False)

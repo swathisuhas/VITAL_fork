@@ -74,7 +74,7 @@ def main():
 
     parser.add_argument('--arch_name', default='resnet50', type=str, help='model name from torchvision')
     parser.add_argument('--layer', type=str, default='layer4_2', help='layer of the visualized neuron')
-    parser.add_argument('--channel', type=int, default=8, help='channel id of the visualized neuron')
+    parser.add_argument('--channel', type=int, default=1546, help='channel id of the visualized neuron')
     parser.add_argument('--topk_dir', type=str, default='/BS/feature_viz/work/code/VITAL_fork/inner_fvis/resnet50/neuron_layer4/', help='the directory where the top-k images are stored')
     parser.add_argument('--layer_weights', type=list_of_floats, default="0.1, 1, 1, 1, 0", help='contribution of each layer to the sort-matching loss')
     parser.add_argument('--feat_dist', type=float, default=1.0, help='contribution of the total sort-matching loss')

@@ -6,4 +6,4 @@
 #SBATCH --time=10:00:00
 #SBATCH --mem=64G
 
-python -u imagenet2txt.py 
+python -u inner_neurons_fvis_with_crop.py

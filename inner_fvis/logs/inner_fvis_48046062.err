@@ -1,0 +1,6 @@
+/BS/feature_viz/work/micromamba/envs/envs/myenv/lib/python3.11/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+/BS/feature_viz/work/micromamba/envs/envs/myenv/lib/python3.11/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=ResNet50_Weights.IMAGENET1K_V1`. You can also use `weights=ResNet50_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+/BS/feature_viz/work/code/VITAL_fork/inner_fvis/utils/opt_inner_graph.py:178: UserWarning: You passed both c and facecolor/facecolors for the markers. c has precedence over facecolor/facecolors. This behavior may change in the future.
+  axs[1].scatter(rx, ry, c='lime', s=60, marker='o', facecolors='none', linewidths=2)
