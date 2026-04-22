@@ -1,0 +1,44 @@
+Namespace(no_cuda=False, gpuid='0', setting_id=1, arch_name='resnet50', layer='layer4_2', channel=162, topk_dir='/BS/feature_viz/work/code/VITAL_fork/inner_fvis/resnet50/neuron_layer4/', layer_weights=[0.1, 1.0, 1.0, 1.0, 0.0], feat_dist=1.0, num_real_img=50, method='LRP', resolution=224, epochs=2000, bs=1, jitter=30, exp_name=None, folder_name='images', do_flip=False, tv_l1=0.0, tv_l2=3e-07, lr=1.0, l2=3e-07)
+loading torchvision model for inversion with the name: resnet50
+==> Resuming from checkpoint..
+get_images call
+------------iteration 100----------
+total loss 0.0008347079856321216
+------------iteration 200----------
+total loss 0.0008751510176807642
+------------iteration 300----------
+total loss 0.0007569201407022774
+------------iteration 400----------
+total loss 0.0007946692639961839
+------------iteration 500----------
+total loss 0.0007558550569228828
+------------iteration 600----------
+total loss 0.000742100877687335
+------------iteration 700----------
+total loss 0.0007790146046318114
+------------iteration 800----------
+total loss 0.0006913210963830352
+------------iteration 900----------
+total loss 0.0006386492168530822
+------------iteration 1000----------
+total loss 0.0006481165182776749
+------------iteration 1100----------
+total loss 0.0006199154304340482
+------------iteration 1200----------
+total loss 0.0005995119572617114
+------------iteration 1300----------
+total loss 0.0005578871350735426
+------------iteration 1400----------
+total loss 0.0004915853496640921
+------------iteration 1500----------
+total loss 0.0005516224773600698
+------------iteration 1600----------
+total loss 0.0004924267414025962
+------------iteration 1700----------
+total loss 0.0004750365624204278
+------------iteration 1800----------
+total loss 0.00048050121404230595
+------------iteration 1900----------
+total loss 0.0004833722487092018
+------------iteration 2000----------
+total loss 0.0004185157595202327

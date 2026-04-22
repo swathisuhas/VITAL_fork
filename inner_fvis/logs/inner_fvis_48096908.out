@@ -1,0 +1,84 @@
+Namespace(no_cuda=False, gpuid='0', setting_id=1, arch_name='resnet50', layer='layer4_2', channel=8, topk_dir='/BS/feature_viz/work/code/VITAL_fork/inner_fvis/resnet50/neuron_layer4/', layer_weights=[0.1, 1.0, 1.0, 1.0, 0.0], feat_dist=1.0, num_real_img=50, method='LRP', resolution=224, epochs=2000, bs=1, jitter=30, exp_name=None, folder_name='images', do_flip=False, tv_l1=0.0, tv_l2=3e-07, lr=1.0, l2=3e-07)
+loading torchvision model for inversion with the name: resnet50
+==> Resuming from checkpoint..
+get_images call
+------------iteration 100----------
+total loss 0.0008193696849048138
+feat loss 0.0004296171246096492
+graph loss 0.0
+------------iteration 200----------
+total loss 0.0008521466515958309
+feat loss 0.000459531438536942
+graph loss 0.0
+------------iteration 300----------
+total loss 0.000865828013047576
+feat loss 0.00046755815856158733
+graph loss 0.0
+------------iteration 400----------
+total loss 0.0006883916212245822
+feat loss 0.00033553357934579253
+graph loss 0.0
+------------iteration 500----------
+total loss 0.0007213322096504271
+feat loss 0.00034525347291491926
+graph loss 0.0
+------------iteration 600----------
+total loss 0.0007113927276805043
+feat loss 0.00035120040411129594
+graph loss 0.0
+------------iteration 700----------
+total loss 0.0006697658682242036
+feat loss 0.00032045762054622173
+graph loss 0.0
+------------iteration 800----------
+total loss 0.0006847449112683535
+feat loss 0.000347587134456262
+graph loss 0.0
+------------iteration 900----------
+total loss 0.0006091613322496414
+feat loss 0.00028803289751522243
+graph loss 0.0
+------------iteration 1000----------
+total loss 0.0005734258447773755
+feat loss 0.00026326783699914813
+graph loss 0.0
+------------iteration 1100----------
+total loss 0.0005415068008005619
+feat loss 0.00025160019868053496
+graph loss 0.0
+------------iteration 1200----------
+total loss 0.000542533933185041
+feat loss 0.0002678839082363993
+graph loss 0.0
+------------iteration 1300----------
+total loss 0.0004873822908848524
+feat loss 0.0002333789161639288
+graph loss 0.0
+------------iteration 1400----------
+total loss 0.0004627707530744374
+feat loss 0.00022720982087776065
+graph loss 0.0
+------------iteration 1500----------
+total loss 0.0004307214403524995
+feat loss 0.00021246925462037325
+graph loss 0.0
+------------iteration 1600----------
+total loss 0.00039362331153824925
+feat loss 0.00019295875972602516
+graph loss 0.0
+------------iteration 1700----------
+total loss 0.00035984464921057224
+feat loss 0.0001748481736285612
+graph loss 0.0
+------------iteration 1800----------
+total loss 0.0003228303976356983
+feat loss 0.00015456462278962135
+graph loss 0.0
+------------iteration 1900----------
+total loss 0.00032193350489251316
+feat loss 0.00016362968017347157
+graph loss 0.0
+------------iteration 2000----------
+total loss 0.0003108041128143668
+feat loss 0.00015452310617547482
+graph loss 0.0

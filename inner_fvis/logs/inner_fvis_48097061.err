@@ -1,0 +1,18 @@
+/BS/feature_viz/work/micromamba/envs/envs/myenv/lib/python3.11/site-packages/torchvision/models/_utils.py:208: UserWarning: The parameter 'pretrained' is deprecated since 0.13 and may be removed in the future, please use 'weights' instead.
+  warnings.warn(
+/BS/feature_viz/work/micromamba/envs/envs/myenv/lib/python3.11/site-packages/torchvision/models/_utils.py:223: UserWarning: Arguments other than a weight enum or `None` for 'weights' are deprecated since 0.13 and may be removed in the future. The current behavior is equivalent to passing `weights=ResNet50_Weights.IMAGENET1K_V1`. You can also use `weights=ResNet50_Weights.DEFAULT` to get the most up-to-date weights.
+  warnings.warn(msg)
+Traceback (most recent call last):
+  File "/BS/feature_viz/work/code/VITAL_fork/inner_fvis/inner_neurons_fvis.py", line 109, in <module>
+    main()
+  File "/BS/feature_viz/work/code/VITAL_fork/inner_fvis/inner_neurons_fvis.py", line 105, in main
+    run(args)
+  File "/BS/feature_viz/work/code/VITAL_fork/inner_fvis/inner_neurons_fvis.py", line 66, in run
+    DeepFeatureEngine.get_images()
+  File "/BS/feature_viz/work/code/VITAL_fork/inner_fvis/utils/opt_inner_graph_in_activation.py", line 521, in get_images
+    img_real = obtain_real_imgs(
+               ^^^^^^^^^^^^^^^^^
+  File "/BS/feature_viz/work/code/VITAL_fork/inner_fvis/utils/opt_inner_graph_in_activation.py", line 88, in obtain_real_imgs
+    with open(txt_file) as f:
+         ^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/BS/feature_viz/work/code/VITAL_fork/inner_fvis/resnet50/neuron_layer4/1305/topk_files.txt'

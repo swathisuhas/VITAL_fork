@@ -14,7 +14,7 @@ parser.add_argument('--arch', type=str, default='resnet50')
 parser.add_argument('--patch_size', type=int, default=64)
 parser.add_argument('--topk_patches', type=int, default=50)
 parser.add_argument('--save_dir', type=str, default='/BS/feature_viz/work/code/VITAL_fork/inner_fvis/resnet50/neuron_layer4')
-parser.add_argument('--channel', type=int, default=1546)
+parser.add_argument('--channel', type=int, default=1305)
 
 args = parser.parse_args()
 print(args)
